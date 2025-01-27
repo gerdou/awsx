@@ -37,7 +37,7 @@ var selectCmd = &cobra.Command{
 
 		configs, err := internal.ReadInternalConfig()
 		if err != nil {
-			fmt.Printf("Config file does not exist. Creating it...\n")
+			log.Printf("Config file does not exist. Creating it...\n")
 			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ var selectCmd = &cobra.Command{
 		}
 
 		if _, exists := configs[configName]; !exists {
-			fmt.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
+			log.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
 			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
 				return err
 			}
@@ -69,7 +69,7 @@ var selectCmd = &cobra.Command{
 				}
 			}
 
-			fmt.Printf("Profile \"%s\" does not exist on config %s\n", profileName, configName)
+			log.Printf("Profile \"%s\" does not exist on config %s\n", profileName, configName)
 		}
 
 		var profile *internal.Profile

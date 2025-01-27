@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
+	"github.com/aws/smithy-go"
 	"log"
 	"strconv"
 	"strings"
@@ -12,9 +13,9 @@ import (
 )
 
 func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client, config *Config, selector Prompt) error {
-	clientInformation, err := GetClientInformationForConfig(configName)
+	clientInformation, err := ProcessClientInformation(configName, config.GetStartUrl(), oidcClient)
 	if err != nil {
-		clientInformation, _ = ProcessClientInformation(configName, config.GetStartUrl(), oidcClient)
+		return err
 	}
 
 	log.Printf("Using Start URL %s", clientInformation.StartUrl)
@@ -83,7 +84,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
 	if err != nil {
-		return err
+		return unwrapSmithyError(err)
 	}
 
 	err = WriteAwsConfigFile(profile.Name, config, roleCredentials.RoleCredentials)
@@ -101,4 +102,18 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 	log.Printf("Assumed role: %s", *roleName)
 	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	return nil
+}
+
+func unwrapSmithyError(err error) error {
+	var e *smithy.GenericAPIError
+	if !errors.As(err, &e) {
+		return err
+	}
+
+	switch {
+	case e.ErrorCode() == "ForbiddenException":
+		return errors.New("you do not have permission to assume the role. Please check your AWS SSO configuration")
+	default:
+		return err
+	}
 }

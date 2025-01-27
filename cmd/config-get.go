@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/cmd/internal"
 	"gopkg.in/yaml.v3"
+	"log"
 )
 
 var getConfigCmd = &cobra.Command{
@@ -15,7 +16,7 @@ var getConfigCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config, err := internal.ReadInternalConfig()
 		if err != nil {
-			fmt.Println("no configuration found")
+			log.Println("no configuration found")
 			return nil
 		}
 		marshal, err := yaml.Marshal(config)

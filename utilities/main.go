@@ -7,11 +7,9 @@ import (
 )
 
 func Keys[T comparable, K any](input map[T]K) []T {
-	result := make([]T, len(input))
-	i := 0
+	result := make([]T, 0, len(input))
 	for k, _ := range input {
-		result[i] = k
-		i++
+		result = append(result, k)
 	}
 
 	return result

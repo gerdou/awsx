@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/cmd/internal"
 	"github.com/vahid-haghighat/awsx/utilities"
+	"sort"
 )
 
 var refreshCmd = &cobra.Command{
@@ -50,6 +51,8 @@ var refreshCmd = &cobra.Command{
 			var profile *internal.Profile
 			if len(configs[configName].Profiles) > 1 {
 				profiles := utilities.Keys(configs[configName].Profiles)
+				sort.Strings(profiles)
+
 				index, _, err := prompter.Select(fmt.Sprintf("Select the profile for config \"%s\"", configName), profiles, nil)
 				if err != nil {
 					errs = append(errs, err)

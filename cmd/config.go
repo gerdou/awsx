@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/cmd/internal"
 	"github.com/vahid-haghighat/awsx/utilities"
+	"log"
 	"sort"
 	"strconv"
 )
@@ -54,30 +54,30 @@ func configArgs(configNames []string) error {
 		var err error
 		config.Id, err = prompter.Prompt("Start URL Id", config.Id)
 		if err != nil {
-			fmt.Printf("Failed to prompt for start URL Id for %s\n", configName)
+			log.Printf("Failed to prompt for start URL Id for %s\n", configName)
 			continue
 		}
 
 		config.SsoRegion, err = prompter.Prompt("SSO Region", config.SsoRegion)
 		if err != nil {
-			fmt.Printf("Failed to prompt for sso region for %s\n", configName)
+			log.Printf("Failed to prompt for sso region for %s\n", configName)
 			continue
 		}
 
 		if config.SsoRegion == "" {
-			fmt.Println("SSO Region cannot be empty")
+			log.Println("SSO Region cannot be empty")
 			continue
 		}
 
 		lastUsedAccountCountString, err := prompter.Prompt("Profile count to cache for refresh command", "1")
 		if err != nil {
-			fmt.Printf("Failed to prompt for cached profile counts for %s\n", configName)
+			log.Printf("Failed to prompt for cached profile counts for %s\n", configName)
 			continue
 		}
 
 		config.LastUsedAccountsCount, err = strconv.Atoi(lastUsedAccountCountString)
 		if err != nil {
-			fmt.Printf("Invalid number for %s cached accounts count\n", configName)
+			log.Printf("Invalid number for %s cached accounts count\n", configName)
 			continue
 		}
 
@@ -96,11 +96,11 @@ func configArgs(configNames []string) error {
 			}
 			profileName, err = prompter.Prompt("Profile name to configure", defaultProfileName)
 			if err != nil {
-				fmt.Printf("Failed to prompt for %s config argument: %s\n", configName, err)
+				log.Printf("Failed to prompt for %s config argument: %s\n", configName, err)
 				break
 			}
 			if profileName == "" {
-				fmt.Println("Profile name cannot be empty")
+				log.Println("Profile name cannot be empty")
 				break
 			}
 
@@ -117,11 +117,11 @@ func configArgs(configNames []string) error {
 
 			region, err = prompter.Prompt("Default Profile Region", defaultRegion.Region)
 			if err != nil {
-				fmt.Printf("Failed to prompt for region for %s: %s\n", configName, err)
+				log.Printf("Failed to prompt for region for %s: %s\n", configName, err)
 				break
 			}
 			if region == "" {
-				fmt.Println("Region name cannot be empty")
+				log.Println("Region name cannot be empty")
 				break
 			}
 
