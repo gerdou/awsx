@@ -115,7 +115,7 @@ func configArgs(configNames []string) error {
 				}
 			}
 
-			region, err = prompter.Prompt("Region", defaultRegion.Region)
+			region, err = prompter.Prompt("Default Profile Region", defaultRegion.Region)
 			if err != nil {
 				fmt.Printf("Failed to prompt for region for %s: %s\n", configName, err)
 				break

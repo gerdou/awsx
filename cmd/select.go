@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ var selectCmd = &cobra.Command{
 
 		configs, err := internal.ReadInternalConfig()
 		if err != nil {
+			fmt.Printf("Config file does not exist. Creating it...\n")
 			if err = configCmd.RunE(cmd, args); err != nil {
 				return err
 			}
@@ -38,6 +40,18 @@ var selectCmd = &cobra.Command{
 
 		if len(args) == 1 {
 			configName = args[0]
+		}
+
+		if _, exists := configs[configName]; !exists {
+			fmt.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
+			if err = configCmd.RunE(cmd, args); err != nil {
+				return err
+			}
+
+			configs, err = internal.ReadInternalConfig()
+			if err != nil {
+				return err
+			}
 		}
 
 		var profile *internal.Profile

@@ -16,10 +16,13 @@ var rootCmd = &cobra.Command{
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if versionFlag {
-			fmt.Printf("v%s\n", version.Version)
+			fmt.Println(version.Version)
 			return nil
 		}
 		return selectCmd.RunE(cmd, args)
+	},
+	Args: func(cmd *cobra.Command, args []string) error {
+		return nil
 	},
 }
 
