@@ -143,7 +143,6 @@ func openUrlInBrowser(url string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func retrieveToken(client *ssooidc.Client, info *ClientInformation) *ClientInformation {
@@ -170,15 +169,15 @@ func retrieveToken(client *ssooidc.Client, info *ClientInformation) *ClientInfor
 }
 
 func InitClients(config *Config) (*ssooidc.Client, *sso.Client) {
-	cfg, _ := ssoConfig.LoadDefaultConfig(context.TODO(), ssoConfig.WithRegion(config.SsoRegion))
+	cfg, _ := ssoConfig.LoadDefaultConfig(context.Background(), ssoConfig.WithRegion(config.SsoRegion))
 	oidcClient := ssooidc.NewFromConfig(cfg)
 	ssoClient := sso.NewFromConfig(cfg)
 
 	return oidcClient, ssoClient
 }
 
-func RetrieveRoleInfo(accountInfo ssoTypes.AccountInfo, clientInformation *ClientInformation, ssoClient *sso.Client, selector Prompt) ssoTypes.RoleInfo {
-	lari := &sso.ListAccountRolesInput{AccountId: accountInfo.AccountId, AccessToken: &clientInformation.AccessToken}
+func RetrieveRoleInfo(accountId *string, clientInformation *ClientInformation, ssoClient *sso.Client, selector Prompt) ssoTypes.RoleInfo {
+	lari := &sso.ListAccountRolesInput{AccountId: accountId, AccessToken: &clientInformation.AccessToken}
 	roles, _ := ssoClient.ListAccountRoles(context.Background(), lari)
 
 	if len(roles.RoleList) == 1 {

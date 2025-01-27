@@ -13,8 +13,9 @@ import (
 )
 
 type Profile struct {
-	Region string `yaml:"region"`
-	Name   string `yaml:"-"`
+	Region         string            `yaml:"region"`
+	DefaultAccount *UsageInformation `yaml:"default_account,omitempty"`
+	Name           string            `yaml:"-"`
 }
 
 type Config struct {
@@ -50,15 +51,15 @@ type ClientInformationFile struct {
 	ClientInformation map[string]*ClientInformation `yaml:"client_information"`
 }
 
-type LastUsageInformation struct {
+type UsageInformation struct {
 	AccountId   string `yaml:"account_id"`
 	AccountName string `yaml:"account_name"`
 	Role        string `yaml:"role"`
 }
 
 type LastUsageInformationFile struct {
-	Version              string                            `yaml:"version"`
-	LastUsageInformation map[string][]LastUsageInformation `yaml:"last_usage_information"`
+	Version              string                        `yaml:"version"`
+	LastUsageInformation map[string][]UsageInformation `yaml:"last_usage_information"`
 }
 
 var home, _ = os.UserHomeDir()
@@ -77,7 +78,7 @@ func ReadUsageInformationFile() (*LastUsageInformationFile, error) {
 	if err != nil {
 		return &LastUsageInformationFile{
 			Version:              version.Version,
-			LastUsageInformation: make(map[string][]LastUsageInformation),
+			LastUsageInformation: make(map[string][]UsageInformation),
 		}, err
 	}
 
@@ -90,7 +91,7 @@ func ReadUsageInformationFile() (*LastUsageInformationFile, error) {
 	return lastUsageInformationFile, nil
 }
 
-func GetUsageInformationForConfig(configName string) ([]LastUsageInformation, error) {
+func GetUsageInformationForConfig(configName string) ([]UsageInformation, error) {
 	usageInformationFile, err := ReadUsageInformationFile()
 	if err != nil {
 		return nil, nil
@@ -104,7 +105,7 @@ func GetUsageInformationForConfig(configName string) ([]LastUsageInformation, er
 	return usageInformation, nil
 }
 
-func SetUsageInformationForConfig(configName string, information *LastUsageInformation) error {
+func SaveUsageInformationForConfig(configName string, information *UsageInformation) error {
 	err := os.MkdirAll(defaultCachePath, 0700)
 	if err != nil {
 		return err
@@ -113,9 +114,9 @@ func SetUsageInformationForConfig(configName string, information *LastUsageInfor
 	usageInformationFile, _ := ReadUsageInformationFile()
 	usageInformation, _ := usageInformationFile.LastUsageInformation[configName]
 
-	allUsageInformation := append([]LastUsageInformation{*information}, usageInformation...)
-	var unique []LastUsageInformation
-	uniqueMap := make(map[LastUsageInformation]bool)
+	allUsageInformation := append([]UsageInformation{*information}, usageInformation...)
+	var unique []UsageInformation
+	uniqueMap := make(map[UsageInformation]bool)
 
 	for _, value := range allUsageInformation {
 		if _, exists := uniqueMap[value]; !exists {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
@@ -19,14 +20,25 @@ var selectCmd = &cobra.Command{
 	Long:              `Lets you select a profile from available profiles on AWS SSO`,
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errors.New("too many config names were specified. please pass only one config name")
+		if len(args) > 2 {
+			return errors.New("too many config names were specified. please pass only one config name followed by optional profile name")
+		}
+
+		configName := "default"
+		profileName := ""
+
+		if len(args) >= 1 {
+			configName = args[0]
+		}
+
+		if len(args) == 2 {
+			profileName = args[1]
 		}
 
 		configs, err := internal.ReadInternalConfig()
 		if err != nil {
 			fmt.Printf("Config file does not exist. Creating it...\n")
-			if err = configCmd.RunE(cmd, args); err != nil {
+			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
 				return err
 			}
 
@@ -34,17 +46,11 @@ var selectCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-		}
-
-		configName := "default"
-
-		if len(args) == 1 {
-			configName = args[0]
 		}
 
 		if _, exists := configs[configName]; !exists {
 			fmt.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
-			if err = configCmd.RunE(cmd, args); err != nil {
+			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
 				return err
 			}
 
@@ -52,6 +58,18 @@ var selectCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+		}
+
+		oidcApi, ssoApi := internal.InitClients(configs[configName])
+
+		if profileName != "" {
+			for _, profile := range configs[configName].Profiles {
+				if profile.Name == profileName {
+					return start(configName, profile, oidcApi, ssoApi, configs[configName])
+				}
+			}
+
+			fmt.Printf("Profile \"%s\" does not exist on config %s\n", profileName, configName)
 		}
 
 		var profile *internal.Profile
@@ -78,7 +96,6 @@ var selectCmd = &cobra.Command{
 			return errors.New("no region is set for this profile")
 		}
 
-		oidcApi, ssoApi := internal.InitClients(configs[configName])
 		return start(configName, profile, oidcApi, ssoApi, configs[configName])
 	},
 }
@@ -91,11 +108,34 @@ func start(configName string, profile *internal.Profile, oidcClient *ssooidc.Cli
 	clientInformation, _ := internal.ProcessClientInformation(configName, config.GetStartUrl(), oidcClient)
 
 	promptSelector := internal.Prompter{}
-	accountInfo := internal.RetrieveAccountInfo(clientInformation, ssoClient, promptSelector)
-	roleInfo := internal.RetrieveRoleInfo(accountInfo, clientInformation, ssoClient, promptSelector)
-	_ = internal.SaveUsageInformation(configName, accountInfo, roleInfo)
 
-	rci := &sso.GetRoleCredentialsInput{AccountId: accountInfo.AccountId, RoleName: roleInfo.RoleName, AccessToken: &clientInformation.AccessToken}
+	var accountId, accountName, roleName *string
+	if profile.DefaultAccount == nil {
+		accountInfo := internal.RetrieveAccountInfo(clientInformation, ssoClient, promptSelector)
+		accountName = accountInfo.AccountName
+		roleInfo := internal.RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, promptSelector)
+
+		accountId = accountInfo.AccountId
+		roleName = roleInfo.RoleName
+	} else {
+		accountId = aws.String(profile.DefaultAccount.AccountId)
+		accountName = aws.String(profile.DefaultAccount.AccountName)
+
+		if profile.DefaultAccount.Role == "" {
+			roleInfo := internal.RetrieveRoleInfo(accountId, clientInformation, ssoClient, promptSelector)
+			roleName = roleInfo.RoleName
+		} else {
+			roleName = aws.String(profile.DefaultAccount.Role)
+		}
+	}
+
+	_ = internal.SaveUsageInformationForConfig(configName, &internal.UsageInformation{
+		AccountId:   *accountId,
+		AccountName: *accountName,
+		Role:        *roleName,
+	})
+
+	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
 	if err != nil {
 		return err
