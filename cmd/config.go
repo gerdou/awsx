@@ -126,11 +126,18 @@ func configArgs(configNames []string) error {
 			}
 
 			config.Profiles[profileName] = &internal.Profile{
-				Region: region,
+				Region:         region,
+				DefaultAccount: nil,
 			}
+
+			index, _, _ := prompter.Select("Do you wish to configure a default account for this profile?", []string{"Yes", "No"}, nil)
+			if index == 0 {
+				config.Profiles[profileName].DefaultAccount = configDefaultAccountForProfile(profileName, prompter)
+			}
+
 			profilesConfigured++
 
-			index, _, _ := prompter.Select("Do you wish to add another profile to this config?", []string{"Yes", "No"}, nil)
+			index, _, _ = prompter.Select("Do you wish to add another profile to this config?", []string{"Yes", "No"}, nil)
 			if index != 0 {
 				break
 			}
@@ -145,4 +152,38 @@ func configArgs(configNames []string) error {
 	}
 
 	return internal.WriteInternalConfig(configs)
+}
+
+func configDefaultAccountForProfile(profile string, prompter internal.Prompter) *internal.UsageInformation {
+	defaultAccount := &internal.UsageInformation{}
+
+	var err error
+	defaultAccount.AccountId, err = prompter.Prompt("Default Account Id for this profile", "")
+	if err != nil {
+		log.Printf("Failed to prompt for default account id for profile: %s\n", err)
+		return nil
+	}
+
+	if defaultAccount.AccountId == "" {
+		log.Println("Default Account Id cannot be empty")
+		return nil
+	}
+
+	defaultAccount.AccountName, err = prompter.Prompt("Default Account Name for this profile", "")
+	if err != nil {
+		log.Printf("Failed to prompt for default account name for profile: %s\n", err)
+		return nil
+	}
+
+	if defaultAccount.AccountName == "" {
+		log.Println("Default Account Name cannot be empty")
+		return nil
+	}
+
+	defaultAccount.Role, err = prompter.Prompt("Default Role for this profile (optional)", "")
+	if err != nil {
+		log.Printf("Failed to prompt for default role for profile: %s\n", err)
+	}
+
+	return defaultAccount
 }
