@@ -1,16 +1,9 @@
 package cmd
 
 import (
-	"context"
-	"errors"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sso"
-	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/cmd/internal"
 	"github.com/vahid-haghighat/awsx/utilities"
-	"log"
-	"time"
 )
 
 var selectCmd = &cobra.Command{
@@ -19,132 +12,24 @@ var selectCmd = &cobra.Command{
 	Long:              `Lets you select a profile from available profiles on AWS SSO`,
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 2 {
-			return errors.New("too many config names were specified. please pass only one config name followed by optional profile name")
-		}
-
-		configName := "default"
-		profileName := ""
-
-		if len(args) >= 1 {
-			configName = args[0]
-		}
-
-		if len(args) == 2 {
-			profileName = args[1]
-		}
-
-		configs, err := internal.ReadInternalConfig()
+		configName, configs, profileNames, err := processInputArgsForSelectAndRefresh(cmd, args)
 		if err != nil {
-			log.Printf("Config file does not exist. Creating it...\n")
-			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
-				return err
-			}
-
-			configs, err = internal.ReadInternalConfig()
-			if err != nil {
-				return err
-			}
-		}
-
-		if _, exists := configs[configName]; !exists {
-			log.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
-			if err = configCmd.RunE(cmd, []string{configName}); err != nil {
-				return err
-			}
-
-			configs, err = internal.ReadInternalConfig()
-			if err != nil {
-				return err
-			}
+			return err
 		}
 
 		oidcApi, ssoApi := internal.InitClients(configs[configName])
 
-		if profileName != "" {
-			for _, profile := range configs[configName].Profiles {
-				if profile.Name == profileName {
-					return start(configName, profile, oidcApi, ssoApi, configs[configName])
-				}
+		if len(profileNames) >= 1 {
+			if profileNames[0] == "all" {
+				profileNames = utilities.Keys(configs[configName].Profiles)
 			}
-
-			log.Printf("Profile \"%s\" does not exist on config %s\n", profileName, configName)
+			return actionWithSpecifiedProfiles(configs[configName], profileNames, oidcApi, ssoApi, internal.Select)
 		}
 
-		var profile *internal.Profile
-		if len(configs[configName].Profiles) > 1 {
-			prompt := internal.Prompter{}
-			profiles := utilities.Keys(configs[configName].Profiles)
-			index, _, err := prompt.Select("Select the profile", profiles, nil)
-			if err != nil {
-				return err
-			}
-
-			profile = configs[configName].Profiles[profiles[index]]
-		} else {
-			for _, p := range configs[configName].Profiles {
-				profile = p
-			}
-		}
-
-		if profile == nil {
-			return errors.New("no profile selected")
-		}
-
-		if profile.Region == "" {
-			return errors.New("no region is set for this profile")
-		}
-
-		return start(configName, profile, oidcApi, ssoApi, configs[configName])
+		return actionWithUnspecifiedProfiles(configs[configName], oidcApi, ssoApi, internal.Select)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(selectCmd)
-}
-
-func start(configName string, profile *internal.Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client, config *internal.Config) error {
-	clientInformation, _ := internal.ProcessClientInformation(configName, config.GetStartUrl(), oidcClient)
-
-	promptSelector := internal.Prompter{}
-
-	var accountId, accountName, roleName *string
-	if profile.DefaultAccount == nil {
-		accountInfo := internal.RetrieveAccountInfo(clientInformation, ssoClient, promptSelector)
-		accountName = accountInfo.AccountName
-		roleInfo := internal.RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, promptSelector)
-
-		accountId = accountInfo.AccountId
-		roleName = roleInfo.RoleName
-	} else {
-		accountId = aws.String(profile.DefaultAccount.AccountId)
-		accountName = aws.String(profile.DefaultAccount.AccountName)
-
-		if profile.DefaultAccount.Role == "" {
-			roleInfo := internal.RetrieveRoleInfo(accountId, clientInformation, ssoClient, promptSelector)
-			roleName = roleInfo.RoleName
-		} else {
-			roleName = aws.String(profile.DefaultAccount.Role)
-		}
-	}
-
-	_ = internal.SaveUsageInformationForConfig(configName, &internal.UsageInformation{
-		AccountId:   *accountId,
-		AccountName: *accountName,
-		Role:        *roleName,
-	})
-
-	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
-	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
-	if err != nil {
-		return err
-	}
-
-	err = internal.WriteAwsConfigFile(profile.Name, config, roleCredentials.RoleCredentials)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
-	return nil
 }

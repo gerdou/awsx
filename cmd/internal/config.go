@@ -24,6 +24,7 @@ type Config struct {
 	LastUsedAccountsCount int                 `yaml:"last_used_accounts_count"`
 	SsoRegion             string              `yaml:"sso_region"`
 	Complete              bool                `yaml:"-"`
+	Name                  string              `yaml:"-"`
 }
 
 func (c *Config) GetStartUrl() string {
@@ -258,8 +259,9 @@ func ReadInternalConfig() (map[string]*Config, error) {
 		return nil, err
 	}
 
-	for _, config := range configFile.Configs {
+	for configName, config := range configFile.Configs {
 		config.Complete = true
+		config.Name = configName
 		for name, profile := range config.Profiles {
 			profile.Name = name
 		}

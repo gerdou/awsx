@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/smithy-go"
@@ -12,18 +13,19 @@ import (
 	"time"
 )
 
-func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client, config *Config, selector Prompt) error {
-	clientInformation, err := ProcessClientInformation(configName, config.GetStartUrl(), oidcClient)
+func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
+	clientInformation, err := ProcessClientInformation(config.Name, config.GetStartUrl(), oidcClient)
 	if err != nil {
 		return err
 	}
 
 	log.Printf("Using Start URL %s", clientInformation.StartUrl)
+	selector := Prompter{}
 
 	var accountId *string
 	var roleName *string
 
-	luis, err := GetUsageInformationForConfig(configName)
+	luis, err := GetUsageInformationForConfig(config.Name)
 
 	var toSelect []string
 	linePrefix := "#"
@@ -42,7 +44,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 		roleInfo := RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, Prompter{})
 		roleName = roleInfo.RoleName
 		accountId = accountInfo.AccountId
-		err = SaveUsageInformationForConfig(configName, &UsageInformation{
+		err = SaveUsageInformationForConfig(config.Name, &UsageInformation{
 			AccountId:   *accountInfo.AccountId,
 			AccountName: *accountInfo.AccountName,
 			Role:        *roleInfo.RoleName,
@@ -67,7 +69,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 			roleInfo := RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, Prompter{})
 			roleName = roleInfo.RoleName
 			accountId = accountInfo.AccountId
-			err = SaveUsageInformationForConfig(configName, &UsageInformation{
+			err = SaveUsageInformationForConfig(config.Name, &UsageInformation{
 				AccountId:   *accountInfo.AccountId,
 				AccountName: *accountInfo.AccountName,
 				Role:        *roleInfo.RoleName,
@@ -92,7 +94,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 		return err
 	}
 
-	err = SaveUsageInformationForConfig(configName, &lui)
+	err = SaveUsageInformationForConfig(config.Name, &lui)
 
 	if accountId == nil || roleName == nil {
 		return errors.New("no account or role found")
@@ -101,7 +103,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 	log.Printf("Retrieved credentials for account %s successfully", *accountId)
 	log.Printf("Assumed role: %s", *roleName)
 	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
-	log.Println()
+	fmt.Println()
 	return nil
 }
 
