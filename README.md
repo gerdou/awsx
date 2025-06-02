@@ -1,21 +1,20 @@
 # awsx
 
-`awsx` is a cli tool to help retrieving short-living credentials via AWS SSO.
+`awsx` is a CLI tool for retrieving temporary credentials via AWS SSO.
 
 ## Installation
 
 ### Homebrew
-You can install the app using the following commands:
-```shell
+```
 brew tap brewdex/awsx
 brew install awsx
 ```
 
 ### Binary Download
-Download the executable from the release page for your operating system.
+Get the binary from the [releases page](https://github.com/vahid-haghighat/awsx/releases).
 
-### Build
-If you have `go` installed, run:
-```shell
+### Build from Source
+With Go installed, run:
+```
 go install github.com/vahid-haghighat/awsx@latest
 ```
