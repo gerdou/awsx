@@ -15,10 +15,7 @@ var refreshCmd = &cobra.Command{
 	Long:              `Refreshes your previously used credentials.`,
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		configNames := []string{"default"}
-		if len(args) > 0 {
-			configNames = args
-		}
+		var configNames []string
 
 		configs, err := internal.ReadInternalConfig()
 		if err != nil {
@@ -33,8 +30,22 @@ var refreshCmd = &cobra.Command{
 		}
 
 		var errs []error
-
 		prompter := internal.Prompter{}
+
+		if len(args) == 0 {
+			profileNames := utilities.Keys(configs)
+			profileIndexes, err := prompter.MultiSelect("Select the configs to refresh", profileNames, nil)
+			if err != nil {
+				return err
+			}
+
+			args = make([]string, 0, len(profileIndexes))
+			for _, index := range profileIndexes {
+				args = append(args, profileNames[index])
+			}
+		}
+
+		configNames = args
 
 	Configs:
 		for _, configName := range configNames {
@@ -48,38 +59,51 @@ var refreshCmd = &cobra.Command{
 				config = configs[configName]
 			}
 
-			var profile *internal.Profile
+			var selectedProfiles []*internal.Profile
 			if len(configs[configName].Profiles) > 1 {
 				profiles := utilities.Keys(configs[configName].Profiles)
 				sort.Strings(profiles)
 
-				index, _, err := prompter.Select(fmt.Sprintf("Select the profile for config \"%s\"", configName), profiles, nil)
+				indexes, err := prompter.MultiSelect(fmt.Sprintf("Select the profiles for config \"%s\"", configName), profiles, nil)
 				if err != nil {
 					errs = append(errs, err)
 					continue Configs
 				}
 
-				profile = configs[configName].Profiles[profiles[index]]
+				selectedProfiles = make([]*internal.Profile, 0, len(indexes))
+				for _, index := range indexes {
+					selectedProfiles = append(selectedProfiles, configs[configName].Profiles[profiles[index]])
+				}
 			} else {
 				for _, p := range configs[configName].Profiles {
-					profile = p
+					selectedProfiles = []*internal.Profile{p}
 				}
 			}
 
-			if profile == nil {
+			if len(selectedProfiles) == 0 {
 				errs = append(errs, errors.New(fmt.Sprintf("no profile selected for \"%s\"", configName)))
 				continue Configs
 			}
 
-			if profile.Region == "" {
-				errs = append(errs, errors.New(fmt.Sprintf("no region is set for profile \"%s\" in config \"%s\"", profile.Name, configName)))
-				continue Configs
-			}
+			for _, profile := range selectedProfiles {
+				if profile == nil {
+					errs = append(errs, errors.New(fmt.Sprintf("profile is nil for config \"%s\"", configName)))
+					continue
+				}
+				if profile.Name == "" {
+					errs = append(errs, errors.New(fmt.Sprintf("profile name is empty for config \"%s\"", configName)))
+					continue
+				}
+				if profile.Region == "" {
+					errs = append(errs, errors.New(fmt.Sprintf("no region is set for profile \"%s\" in config \"%s\"", profile.Name, configName)))
+					continue Configs
+				}
 
-			oidcApi, ssoApi := internal.InitClients(configs[configName])
-			err = internal.RefreshCredentials(configName, profile, oidcApi, ssoApi, config, prompter)
-			if err != nil {
-				errs = append(errs, err)
+				oidcApi, ssoApi := internal.InitClients(configs[configName])
+				err = internal.RefreshCredentials(configName, profile, oidcApi, ssoApi, config, prompter)
+				if err != nil {
+					errs = append(errs, err)
+				}
 			}
 		}
 

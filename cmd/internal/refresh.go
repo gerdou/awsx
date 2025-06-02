@@ -101,6 +101,7 @@ func RefreshCredentials(configName string, profile *Profile, oidcClient *ssooidc
 	log.Printf("Retrieved credentials for account %s successfully", *accountId)
 	log.Printf("Assumed role: %s", *roleName)
 	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
+	log.Println()
 	return nil
 }
 
