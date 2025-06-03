@@ -100,7 +100,7 @@ func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCl
 		return errors.New("no account or role found")
 	}
 
-	log.Printf("Retrieved credentials for account %s successfully", *accountId)
+	log.Printf("Retrieved credentials for account %s [%s] successfully", lui.AccountName, *accountId)
 	log.Printf("Assumed role: %s", *roleName)
 	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	fmt.Println()
