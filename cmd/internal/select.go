@@ -11,6 +11,7 @@ import (
 )
 
 func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
+	log.Printf("Getting credentials for profile %s in config %s", profile.Name, config.Name)
 	clientInformation, err := ProcessClientInformation(config.Name, config.GetStartUrl(), oidcClient)
 	if err != nil {
 		return err
@@ -43,6 +44,7 @@ func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCli
 		AccountId:   *accountId,
 		AccountName: *accountName,
 		Role:        *roleName,
+		Profile:     profile.Name,
 	})
 
 	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
@@ -56,6 +58,8 @@ func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCli
 		return err
 	}
 
+	log.Printf("Retrieved credentials for account %s [%s] successfully", *accountName, *accountId)
+	log.Printf("Assumed role: %s", *roleName)
 	log.Printf("Credentials expire at: %s\n", time.Unix(roleCredentials.RoleCredentials.Expiration/1000, 0))
 	fmt.Println()
 	return nil

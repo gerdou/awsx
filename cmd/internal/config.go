@@ -19,12 +19,11 @@ type Profile struct {
 }
 
 type Config struct {
-	Id                    string              `yaml:"Id"`
-	Profiles              map[string]*Profile `yaml:"profiles"`
-	LastUsedAccountsCount int                 `yaml:"last_used_accounts_count"`
-	SsoRegion             string              `yaml:"sso_region"`
-	Complete              bool                `yaml:"-"`
-	Name                  string              `yaml:"-"`
+	Id        string              `yaml:"Id"`
+	Profiles  map[string]*Profile `yaml:"profiles"`
+	SsoRegion string              `yaml:"sso_region"`
+	Complete  bool                `yaml:"-"`
+	Name      string              `yaml:"-"`
 }
 
 func (c *Config) GetStartUrl() string {
@@ -56,6 +55,7 @@ type UsageInformation struct {
 	AccountId   string `yaml:"account_id"`
 	AccountName string `yaml:"account_name"`
 	Role        string `yaml:"role"`
+	Profile     string `yaml:"profile"`
 }
 
 type LastUsageInformationFile struct {

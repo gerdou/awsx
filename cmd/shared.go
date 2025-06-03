@@ -56,6 +56,7 @@ func actionWithUnspecifiedProfiles(config *internal.Config, oidcApi *ssooidc.Cli
 	if len(config.Profiles) > 1 {
 		prompt := internal.Prompter{}
 		profiles := utilities.Keys(config.Profiles)
+		slices.Sort(profiles)
 		indexes, err := prompt.MultiSelect("Select the profile", profiles, nil)
 		if err != nil {
 			return err

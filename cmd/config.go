@@ -6,7 +6,6 @@ import (
 	"github.com/vahid-haghighat/awsx/utilities"
 	"log"
 	"sort"
-	"strconv"
 )
 
 var configCmd = &cobra.Command{
@@ -43,10 +42,9 @@ func configArgs(configNames []string) error {
 		config, ok := configs[configName]
 		if !ok {
 			config = &internal.Config{
-				Id:                    "",
-				SsoRegion:             "",
-				Profiles:              make(map[string]*internal.Profile),
-				LastUsedAccountsCount: 1,
+				Id:        "",
+				SsoRegion: "",
+				Profiles:  make(map[string]*internal.Profile),
 			}
 		}
 		config.Complete = false
@@ -66,18 +64,6 @@ func configArgs(configNames []string) error {
 
 		if config.SsoRegion == "" {
 			log.Println("SSO Region cannot be empty")
-			continue
-		}
-
-		lastUsedAccountCountString, err := prompter.Prompt("Profile count to cache for refresh command", "1")
-		if err != nil {
-			log.Printf("Failed to prompt for cached profile counts for %s\n", configName)
-			continue
-		}
-
-		config.LastUsedAccountsCount, err = strconv.Atoi(lastUsedAccountCountString)
-		if err != nil {
-			log.Printf("Invalid number for %s cached accounts count\n", configName)
 			continue
 		}
 

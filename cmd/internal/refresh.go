@@ -8,75 +8,41 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/aws/smithy-go"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 )
 
 func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
+	log.Printf("Refreshing credentials for profile %s in config %s", profile.Name, config.Name)
 	clientInformation, err := ProcessClientInformation(config.Name, config.GetStartUrl(), oidcClient)
 	if err != nil {
 		return err
 	}
 
 	log.Printf("Using Start URL %s", clientInformation.StartUrl)
-	selector := Prompter{}
 
 	var accountId *string
 	var roleName *string
 
 	luis, err := GetUsageInformationForConfig(config.Name)
 
-	var toSelect []string
-	linePrefix := "#"
-
-	for i, info := range luis {
-		if i >= config.LastUsedAccountsCount {
-			break
+	var lui *UsageInformation
+	for _, info := range luis {
+		if info.Profile == profile.Name {
+			lui = &info
 		}
-		toSelect = append(toSelect, linePrefix+strconv.Itoa(i)+" "+info.AccountName+" "+info.AccountId+" - "+info.Role)
 	}
 
-	var lui UsageInformation
-	if len(toSelect) == 0 {
-		log.Println("Nothing to refresh yet.")
-		accountInfo := RetrieveAccountInfo(clientInformation, ssoClient, Prompter{})
-		roleInfo := RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, Prompter{})
-		roleName = roleInfo.RoleName
-		accountId = accountInfo.AccountId
-		err = SaveUsageInformationForConfig(config.Name, &UsageInformation{
-			AccountId:   *accountInfo.AccountId,
-			AccountName: *accountInfo.AccountName,
-			Role:        *roleInfo.RoleName,
-		})
-		if err != nil {
-			return err
-		}
-	} else if len(toSelect) == 1 {
-		log.Printf("There is only one role available for refresh")
-		lui = luis[0]
-	} else {
-		label := "Select an account/role combination - Hint: fuzzy search supported. To choose one account directly just enter #{Int}"
-		indexChoice, _, _ := selector.Select(label, toSelect, fuzzySearchWithPrefixAnchor(toSelect, linePrefix))
-		lui = luis[indexChoice]
+	if lui == nil {
+		log.Printf("Nothing to refresh yet for profile %s in config %s", profile.Name, config.Name)
+		return Select(config, profile, oidcClient, ssoClient)
 	}
 
-	log.Printf("Attempting to refresh credentials for account [%s] with role [%s]", lui.AccountName, lui.Role)
+	log.Printf("Attempting to refresh credentials for account %s with role %s", lui.AccountName, lui.Role)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file") {
 			log.Println("Nothing to refresh yet.")
-			accountInfo := RetrieveAccountInfo(clientInformation, ssoClient, Prompter{})
-			roleInfo := RetrieveRoleInfo(accountInfo.AccountId, clientInformation, ssoClient, Prompter{})
-			roleName = roleInfo.RoleName
-			accountId = accountInfo.AccountId
-			err = SaveUsageInformationForConfig(config.Name, &UsageInformation{
-				AccountId:   *accountInfo.AccountId,
-				AccountName: *accountInfo.AccountName,
-				Role:        *roleInfo.RoleName,
-			})
-			if err != nil {
-				return err
-			}
+			return Select(config, profile, oidcClient, ssoClient)
 		}
 	} else {
 		accountId = &lui.AccountId
@@ -94,7 +60,7 @@ func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCl
 		return err
 	}
 
-	err = SaveUsageInformationForConfig(config.Name, &lui)
+	err = SaveUsageInformationForConfig(config.Name, lui)
 
 	if accountId == nil || roleName == nil {
 		return errors.New("no account or role found")
