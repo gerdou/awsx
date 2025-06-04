@@ -13,7 +13,7 @@ import (
 )
 
 func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
-	log.Printf("Refreshing credentials for profile %s in config %s", profile.Name, config.Name)
+	log.Printf("Refreshing credentials for profile %s in %s config", profile.Name, config.Name)
 	clientInformation, err := ProcessClientInformation(config.Name, config.GetStartUrl(), oidcClient)
 	if err != nil {
 		return err
