@@ -2,12 +2,15 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
-	"log"
-	"time"
+	"github.com/aws/smithy-go"
 )
 
 func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
@@ -50,7 +53,22 @@ func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCli
 	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
 	if err != nil {
-		return err
+		// Retry once on UnauthorizedException by re-authenticating
+		var e *smithy.GenericAPIError
+		if errors.As(err, &e) && e.ErrorCode() == "UnauthorizedException" {
+			log.Println("Access token invalid or expired. Re-authenticating...")
+			refreshedInfo, rErr := HandleOutdatedAccessToken(config.Name, config.GetStartUrl(), clientInformation, oidcClient)
+			if rErr != nil {
+				return rErr
+			}
+			rci.AccessToken = &refreshedInfo.AccessToken
+			roleCredentials, err = ssoClient.GetRoleCredentials(context.Background(), rci)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	err = WriteAwsConfigFile(profile.Name, config, roleCredentials.RoleCredentials)

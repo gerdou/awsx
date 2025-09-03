@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	ssoConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	ssoTypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
@@ -162,7 +163,15 @@ func retrieveToken(client *ssooidc.Client, info *ClientInformation) *ClientInfor
 			}
 		} else {
 			info.AccessToken = *cto.AccessToken
-			info.AccessTokenExpiresAt = time.Now().Add(time.Hour*8 - time.Minute*5)
+			// Use server-provided expiry when available; fall back to 8h. Apply small safety skew.
+			expiryDuration := time.Hour * 8
+			if cto.ExpiresIn > 0 {
+				expiryDuration = time.Duration(cto.ExpiresIn) * time.Second
+			}
+			if expiryDuration > 5*time.Minute {
+				expiryDuration -= 5 * time.Minute
+			}
+			info.AccessTokenExpiresAt = time.Now().Add(expiryDuration)
 			return info
 		}
 	}
