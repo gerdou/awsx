@@ -132,7 +132,8 @@ func SaveUsageInformationForConfig(configName string, information *UsageInformat
 		}
 	}
 
-	usageInformationFile.LastUsageInformation[configName][information.Profile] = unique
+	usageInformation[information.Profile] = unique
+	usageInformationFile.LastUsageInformation[configName] = usageInformation
 	content, err := yaml.Marshal(usageInformationFile)
 
 	return os.WriteFile(defaultLastUsageFileName, content, 0700)
