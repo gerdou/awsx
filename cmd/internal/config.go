@@ -3,13 +3,14 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"time"
+
 	ssoTypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
 	"github.com/vahid-haghighat/awsx/version"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path"
-	"time"
 )
 
 type Profile struct {
@@ -59,8 +60,8 @@ type UsageInformation struct {
 }
 
 type LastUsageInformationFile struct {
-	Version              string                        `yaml:"version"`
-	LastUsageInformation map[string][]UsageInformation `yaml:"last_usage_information"`
+	Version              string                                   `yaml:"version"`
+	LastUsageInformation map[string]map[string][]UsageInformation `yaml:"last_usage_information"`
 }
 
 var home, _ = os.UserHomeDir()
@@ -79,7 +80,7 @@ func ReadUsageInformationFile() (*LastUsageInformationFile, error) {
 	if err != nil {
 		return &LastUsageInformationFile{
 			Version:              version.Version,
-			LastUsageInformation: make(map[string][]UsageInformation),
+			LastUsageInformation: make(map[string]map[string][]UsageInformation),
 		}, err
 	}
 
@@ -92,7 +93,7 @@ func ReadUsageInformationFile() (*LastUsageInformationFile, error) {
 	return lastUsageInformationFile, nil
 }
 
-func GetUsageInformationForConfig(configName string) ([]UsageInformation, error) {
+func GetUsageInformationForConfig(configName string) (map[string][]UsageInformation, error) {
 	usageInformationFile, err := ReadUsageInformationFile()
 	if err != nil {
 		return nil, nil
@@ -113,9 +114,14 @@ func SaveUsageInformationForConfig(configName string, information *UsageInformat
 	}
 
 	usageInformationFile, _ := ReadUsageInformationFile()
-	usageInformation, _ := usageInformationFile.LastUsageInformation[configName]
+	usageInformation, exists := usageInformationFile.LastUsageInformation[configName]
+	if !exists {
+		usageInformation = make(map[string][]UsageInformation)
+	}
 
-	allUsageInformation := append([]UsageInformation{*information}, usageInformation...)
+	usageInformationOfProfile, _ := usageInformation[information.Profile]
+
+	allUsageInformation := append([]UsageInformation{*information}, usageInformationOfProfile...)
 	var unique []UsageInformation
 	uniqueMap := make(map[UsageInformation]bool)
 
@@ -126,7 +132,7 @@ func SaveUsageInformationForConfig(configName string, information *UsageInformat
 		}
 	}
 
-	usageInformationFile.LastUsageInformation[configName] = unique
+	usageInformationFile.LastUsageInformation[configName][information.Profile] = unique
 	content, err := yaml.Marshal(usageInformationFile)
 
 	return os.WriteFile(defaultLastUsageFileName, content, 0700)

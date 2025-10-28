@@ -28,9 +28,9 @@ func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCl
 	luis, err := GetUsageInformationForConfig(config.Name)
 
 	var lui *UsageInformation
-	for _, info := range luis {
-		if info.Profile == profile.Name {
-			lui = &info
+	for p, info := range luis {
+		if p == profile.Name && len(info) > 0 {
+			lui = &info[0]
 		}
 	}
 
