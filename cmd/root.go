@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/version"
-	"os"
 )
 
 var versionFlag bool
@@ -19,7 +20,7 @@ var rootCmd = &cobra.Command{
 			fmt.Println(version.Version)
 			return nil
 		}
-		return selectCmd.RunE(cmd, args)
+		return refreshCmd.RunE(cmd, args)
 	},
 	Args: func(cmd *cobra.Command, args []string) error {
 		return nil
