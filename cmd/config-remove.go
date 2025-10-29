@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/vahid-haghighat/awsx/cmd/internal"
 )
+
+var removeProfiles []string
 
 var configRemoveCmd = &cobra.Command{
 	Use:               "remove",
@@ -11,6 +15,17 @@ var configRemoveCmd = &cobra.Command{
 	Long:              `Removes awsx's Configuration`,
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(removeProfiles) > 0 {
+			configName := "default"
+			if len(args) > 0 {
+				configName = args[0]
+			}
+			if len(args) > 1 {
+				return fmt.Errorf("when using --profile, specify at most one config name")
+			}
+			return internal.RemoveProfilesFromConfig(configName, removeProfiles)
+		}
+
 		configNames := []string{"default"}
 		if len(args) > 0 {
 			configNames = args
@@ -20,5 +35,6 @@ var configRemoveCmd = &cobra.Command{
 }
 
 func init() {
+	configRemoveCmd.Flags().StringSliceVarP(&removeProfiles, "profile", "p", []string{}, "Profile(s) to remove from the named config")
 	configCmd.AddCommand(configRemoveCmd)
 }

@@ -358,3 +358,31 @@ func RemoveInternalConfig(configNames []string) error {
 
 	return WriteInternalConfig(configs)
 }
+
+func RemoveProfilesFromConfig(configName string, profileNames []string) error {
+	configs, _ := ReadInternalConfig()
+
+	config, ok := configs[configName]
+	if !ok {
+		return nil
+	}
+
+	for _, profileName := range profileNames {
+		if _, exists := config.Profiles[profileName]; !exists {
+			continue
+		}
+		delete(config.Profiles, profileName)
+	}
+
+	if len(config.Profiles) == 0 {
+		delete(configs, configName)
+	} else {
+		configs[configName] = config
+	}
+
+	if len(configs) == 0 {
+		return os.RemoveAll(defaultInternalPath)
+	}
+
+	return WriteInternalConfig(configs)
+}
