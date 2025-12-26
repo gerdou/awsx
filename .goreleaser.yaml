@@ -24,21 +24,21 @@ archives:
       - goos: windows
         format: zip
 brews:
-  - url_template: "https://github.com/vahid-haghighat/awsx/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+  - url_template: "https://github.com/gerdou/awsx/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     download_strategy: CurlDownloadStrategy
     commit_author:
-      name: awsx release bot
-      email: bot@goreleaser.com
-    homepage: "https://github.com/vahid-haghighat/awsx"
+      name: gerdou-app[bot]
+      email: 2530509+gerdou-app[bot]@users.noreply.github.com
+    homepage: "https://github.com/gerdou/awsx"
     description: "Helps setting aws cli credentials using aws sso"
     license: "MIT"
     test: system "#{bin}/awsx --version"
     install: bin.install "awsx"
     repository:
-      owner: brewdex
+      owner: gerdou
       name: homebrew-awsx
       branch: main
-      token: "{{ .Env.BREWDEX_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
 changelog:
   sort: asc
   filters:
