@@ -8,7 +8,7 @@ import (
 	"time"
 
 	ssoTypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
-	"github.com/vahid-haghighat/awsx/version"
+	"github.com/gerdou/awsx/version"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
 )

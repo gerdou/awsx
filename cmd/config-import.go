@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/vahid-haghighat/awsx/cmd/internal"
-	"github.com/vahid-haghighat/awsx/utilities"
+	"github.com/gerdou/awsx/cmd/internal"
+	"github.com/gerdou/awsx/utilities"
 
 	"github.com/spf13/cobra"
 )

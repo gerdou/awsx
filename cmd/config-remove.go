@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vahid-haghighat/awsx/cmd/internal"
+	"github.com/gerdou/awsx/cmd/internal"
 )
 
 var removeProfiles []string

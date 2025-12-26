@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/vahid-haghighat/awsx/version"
+	"github.com/gerdou/awsx/version"
 )
 
 var versionFlag bool

@@ -11,10 +11,10 @@ brew install awsx
 ```
 
 ### Binary Download
-Get the binary from the [releases page](https://github.com/vahid-haghighat/awsx/releases).
+Get the binary from the [releases page](https://github.com/gerdou/awsx/releases).
 
 ### Build from Source
 With Go installed, run:
 ```
-go install github.com/vahid-haghighat/awsx@latest
+go install github.com/gerdou/awsx@latest
 ```

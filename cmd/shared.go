@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
 	"github.com/spf13/cobra"
-	"github.com/vahid-haghighat/awsx/cmd/internal"
-	"github.com/vahid-haghighat/awsx/utilities"
+	"github.com/gerdou/awsx/cmd/internal"
+	"github.com/gerdou/awsx/utilities"
 )
 
 func processInputArgsForSelectAndRefresh(cmd *cobra.Command, args []string) (configName string, configs map[string]*internal.Config, profileNames []string, err error) {

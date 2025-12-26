@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/vahid-haghighat/awsx/cmd/internal"
+	"github.com/gerdou/awsx/cmd/internal"
 	"gopkg.in/yaml.v3"
 	"log"
 )

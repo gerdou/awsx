@@ -1,6 +1,6 @@
 package main
 
-import "github.com/vahid-haghighat/awsx/cmd"
+import "github.com/gerdou/awsx/cmd"
 
 func main() {
 	cmd.Execute()
