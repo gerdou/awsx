@@ -6,7 +6,7 @@
 
 ### Homebrew
 ```
-brew tap brewdex/awsx
+brew tap gerdou/awsx
 brew install awsx
 ```
 
