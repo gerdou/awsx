@@ -4,13 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"slices"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
-	"github.com/spf13/cobra"
 	"github.com/gerdou/awsx/cmd/internal"
 	"github.com/gerdou/awsx/utilities"
+	"github.com/spf13/cobra"
 )
 
 func processInputArgsForSelectAndRefresh(cmd *cobra.Command, args []string) (configName string, configs map[string]*internal.Config, profileNames []string, err error) {
@@ -25,31 +27,66 @@ func processInputArgsForSelectAndRefresh(cmd *cobra.Command, args []string) (con
 	}
 
 	configs, err = internal.ReadInternalConfig()
-	if err != nil {
-		log.Printf("Config file does not exist. Creating it...\n")
-		if err = configCmd.RunE(cmd, []string{configName}); err != nil {
-			return "", nil, nil, err
-		}
-
-		configs, err = internal.ReadInternalConfig()
-		if err != nil {
-			return "", nil, nil, err
-		}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", nil, nil, err
 	}
 
+	// Configs are only ever created by the config command, so a mistyped name never starts onboarding
 	if _, exists := configs[configName]; !exists {
-		log.Printf("Config \"%s\" does not exist. Creating it...\n", configName)
-		if err = configCmd.RunE(cmd, []string{configName}); err != nil {
-			return "", nil, nil, err
-		}
-
-		configs, err = internal.ReadInternalConfig()
-		if err != nil {
-			return "", nil, nil, err
-		}
+		cmd.SilenceUsage = true
+		return "", nil, nil, unknownConfigError(cmd, configName, len(args) >= 1, configs)
 	}
 
 	return configName, configs, profileNames, nil
+}
+
+// unknownConfigError explains that configName is not a config, how to add it, and what may have been meant instead
+func unknownConfigError(cmd *cobra.Command, configName string, named bool, configs map[string]*internal.Config) error {
+	typedAtRoot := named && !cmd.HasParent()
+
+	var message strings.Builder
+	switch {
+	case typedAtRoot:
+		fmt.Fprintf(&message, "%q is neither a config nor a command\n", configName)
+	case named:
+		fmt.Fprintf(&message, "there is no config named %q\n", configName)
+	default:
+		fmt.Fprintf(&message, "there is no config named %q, which is used when you don't name a config\n", configName)
+	}
+
+	fmt.Fprintf(&message, "\nTo add a config named %q, run:\n  awsx config %s\n", configName, configName)
+
+	if typedAtRoot {
+		if suggestions := cmd.SuggestionsFor(configName); len(suggestions) > 0 {
+			message.WriteString("\nDid you mean this command?\n")
+			for _, suggestion := range suggestions {
+				fmt.Fprintf(&message, "  awsx %s\n", suggestion)
+			}
+		}
+		message.WriteString("\nIf you misspelled it, these are the available configs and commands.\n")
+	}
+
+	configNames := utilities.Keys(configs)
+	slices.Sort(configNames)
+	if len(configNames) == 0 {
+		message.WriteString("\nThere are no configs yet.\n")
+	} else {
+		message.WriteString("\nAvailable configs:\n")
+		for _, name := range configNames {
+			fmt.Fprintf(&message, "  %s\n", name)
+		}
+	}
+
+	if typedAtRoot {
+		message.WriteString("\nAvailable commands:\n")
+		for _, command := range cmd.Commands() {
+			if command.IsAvailableCommand() || command.Name() == "help" {
+				fmt.Fprintf(&message, "  %-*s %s\n", command.NamePadding(), command.Name(), command.Short)
+			}
+		}
+	}
+
+	return errors.New(strings.TrimRight(message.String(), "\n"))
 }
 
 func actionWithUnspecifiedProfiles(config *internal.Config, oidcApi *ssooidc.Client, ssoApi *sso.Client, action func(*internal.Config, *internal.Profile, *ssooidc.Client, *sso.Client) error) error {

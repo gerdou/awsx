@@ -15,6 +15,8 @@ var rootCmd = &cobra.Command{
 	Short:             "Retrieve short-living credentials via AWS SSO",
 	Long:              `Retrieve short-living credentials via AWS SSO`,
 	DisableAutoGenTag: true,
+	// Cobra only defaults this when it handles unknown commands itself, not for SuggestionsFor
+	SuggestionsMinimumDistance: 2,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if versionFlag {
 			fmt.Println(version.Version)

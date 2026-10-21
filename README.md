@@ -23,11 +23,13 @@ go install github.com/gerdou/awsx@latest
 
 ### 1. Configuration
 
-The first time you run `awsx`, it will guide you through setting up a configuration. You can also manually trigger this with:
+Before you can retrieve credentials, add a configuration:
 
 ```bash
 awsx config [config-name]
 ```
+
+This is the only way to add a configuration. `awsx`, `awsx select` and `awsx refresh` only use configurations that already exist. If you name one that doesn't exist, they stop and show how to add it, along with the existing configurations and, for `awsx` on its own, the available commands. This way a typo such as `awsx refrsh` never starts setting up a new configuration.
 
 - **config-name**: Optional. Defaults to `default`. You can have multiple SSO configurations (e.g., `work`, `personal`).
 - You will be prompted for:
@@ -45,7 +47,7 @@ To browse available accounts and roles in your SSO and update your local AWS cre
 awsx select [config-name] [profile-name]
 ```
 
-- If `config-name` or `profile-name` are omitted, `awsx` will prompt you to select from your saved configurations/profiles.
+- If `config-name` is omitted, the `default` configuration is used. If `profile-name` is omitted, `awsx` prompts you to select from the configuration's profiles.
 - `awsx` will open your browser for SSO authentication if needed.
 - Once authenticated, you'll see a list of accounts and roles you have access to. Selecting one will update your `~/.aws/credentials` for that profile.
 
