@@ -52,23 +52,27 @@ func Refresh(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCl
 
 	rci := &sso.GetRoleCredentialsInput{AccountId: accountId, RoleName: roleName, AccessToken: &clientInformation.AccessToken}
 	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
-	if err != nil {
-		// Retry once on UnauthorizedException by re-authenticating to fetch a fresh access token
-		var e *smithy.GenericAPIError
-		if errors.As(err, &e) && e.ErrorCode() == "UnauthorizedException" {
-			log.Println("Access token invalid or expired. Re-authenticating...")
-			refreshedInfo, rErr := HandleOutdatedAccessToken(config.Name, config.GetStartUrl(), clientInformation, oidcClient)
-			if rErr != nil {
-				return unwrapSmithyError(rErr)
-			}
-			rci.AccessToken = &refreshedInfo.AccessToken
-			roleCredentials, err = ssoClient.GetRoleCredentials(context.Background(), rci)
-			if err != nil {
-				return unwrapSmithyError(err)
-			}
-		} else {
-			return unwrapSmithyError(err)
+	// Retry once on UnauthorizedException by re-authenticating to fetch a fresh access token
+	if hasErrorCode(err, "UnauthorizedException") {
+		log.Println("Access token invalid or expired. Re-authenticating...")
+		refreshedInfo, rErr := HandleOutdatedAccessToken(config.Name, config.GetStartUrl(), clientInformation, oidcClient)
+		if rErr != nil {
+			return unwrapSmithyError(rErr)
 		}
+		rci.AccessToken = &refreshedInfo.AccessToken
+		roleCredentials, err = ssoClient.GetRoleCredentials(context.Background(), rci)
+	}
+	// The account is still accessible, otherwise syncing would have removed the profile, so the role may be gone
+	if hasErrorCode(err, "ForbiddenException") {
+		if revoked, rErr := roleRevoked(rci, ssoClient); rErr == nil && revoked {
+			log.Printf("Role %s is no longer available in account %s [%s]. Select another role.", lui.Role, lui.AccountName, lui.AccountId)
+			reselect := *profile
+			reselect.DefaultAccount = &UsageInformation{AccountId: lui.AccountId, AccountName: lui.AccountName}
+			return Select(config, &reselect, oidcClient, ssoClient)
+		}
+	}
+	if err != nil {
+		return unwrapSmithyError(err)
 	}
 
 	err = WriteAwsConfigFile(profile.Name, config, roleCredentials.RoleCredentials)

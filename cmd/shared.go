@@ -99,6 +99,12 @@ func actionWithUnspecifiedProfiles(config *internal.Config, oidcApi *ssooidc.Cli
 	return errors.Join(errs...)
 }
 
+func syncProfiles(config *internal.Config, oidcApi *ssooidc.Client, ssoApi *sso.Client) {
+	if err := internal.SyncProfiles(config, oidcApi, ssoApi); err != nil {
+		log.Printf("Could not sync profiles of %s config with AWS SSO, continuing with the existing profiles: %v", config.Name, err)
+	}
+}
+
 func actionWithSpecifiedProfiles(config *internal.Config, profileNames []string, oidcApi *ssooidc.Client, ssoApi *sso.Client, action func(*internal.Config, *internal.Profile, *ssooidc.Client, *sso.Client) error) error {
 	var validProfileNames []string
 	var errs []error
@@ -109,6 +115,12 @@ func actionWithSpecifiedProfiles(config *internal.Config, profileNames []string,
 			if err != nil {
 				errs = append(errs, errors.New(fmt.Sprintf("%s: %v", profile.Name, err)))
 			}
+		}
+	}
+
+	for _, profileName := range profileNames {
+		if !slices.Contains(validProfileNames, profileName) {
+			log.Printf("Profile %s does not exist in %s config", profileName, config.Name)
 		}
 	}
 

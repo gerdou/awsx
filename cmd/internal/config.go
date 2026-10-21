@@ -3,8 +3,10 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	ssoTypes "github.com/aws/aws-sdk-go-v2/service/sso/types"
@@ -23,8 +25,10 @@ type Config struct {
 	Id        string              `yaml:"Id"`
 	Profiles  map[string]*Profile `yaml:"profiles"`
 	SsoRegion string              `yaml:"sso_region"`
-	Complete  bool                `yaml:"-"`
-	Name      string              `yaml:"-"`
+	// IgnoredAccounts are ids of accounts that are not added back when syncing with AWS SSO
+	IgnoredAccounts []string `yaml:"ignored_accounts,omitempty"`
+	Complete        bool     `yaml:"-"`
+	Name            string   `yaml:"-"`
 }
 
 func (c *Config) GetStartUrl() string {
@@ -367,12 +371,31 @@ func RemoveProfilesFromConfig(configName string, profileNames []string) error {
 		return nil
 	}
 
+	removedAccounts := make(map[string]bool)
 	for _, profileName := range profileNames {
-		if _, exists := config.Profiles[profileName]; !exists {
+		profile, exists := config.Profiles[profileName]
+		if !exists {
 			continue
+		}
+		if profile.DefaultAccount != nil {
+			removedAccounts[profile.DefaultAccount.AccountId] = true
 		}
 		delete(config.Profiles, profileName)
 	}
+
+	// Keep syncing from adding back accounts whose last profile was removed by hand
+	for _, profile := range config.Profiles {
+		if profile.DefaultAccount != nil {
+			delete(removedAccounts, profile.DefaultAccount.AccountId)
+		}
+	}
+	for accountId := range removedAccounts {
+		if !slices.Contains(config.IgnoredAccounts, accountId) {
+			config.IgnoredAccounts = append(config.IgnoredAccounts, accountId)
+			log.Printf("Account %s will not be added back to %s config. Remove it from ignored_accounts to add it back", accountId, configName)
+		}
+	}
+	slices.Sort(config.IgnoredAccounts)
 
 	if len(config.Profiles) == 0 {
 		delete(configs, configName)

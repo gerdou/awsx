@@ -18,6 +18,7 @@ var selectCmd = &cobra.Command{
 		}
 
 		oidcApi, ssoApi := internal.InitClients(configs[configName])
+		syncProfiles(configs[configName], oidcApi, ssoApi)
 
 		if len(profileNames) >= 1 {
 			if profileNames[0] == "all" {

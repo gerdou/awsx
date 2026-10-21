@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sso"
 	"github.com/aws/aws-sdk-go-v2/service/ssooidc"
-	"github.com/aws/smithy-go"
 )
 
 func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoClient *sso.Client) error {
@@ -54,8 +52,7 @@ func Select(config *Config, profile *Profile, oidcClient *ssooidc.Client, ssoCli
 	roleCredentials, err := ssoClient.GetRoleCredentials(context.Background(), rci)
 	if err != nil {
 		// Retry once on UnauthorizedException by re-authenticating
-		var e *smithy.GenericAPIError
-		if errors.As(err, &e) && e.ErrorCode() == "UnauthorizedException" {
+		if hasErrorCode(err, "UnauthorizedException") {
 			log.Println("Access token invalid or expired. Re-authenticating...")
 			refreshedInfo, rErr := HandleOutdatedAccessToken(config.Name, config.GetStartUrl(), clientInformation, oidcClient)
 			if rErr != nil {
