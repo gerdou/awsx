@@ -136,10 +136,42 @@ func actionWithUnspecifiedProfiles(config *internal.Config, oidcApi *ssooidc.Cli
 	return errors.Join(errs...)
 }
 
-func syncProfiles(config *internal.Config, oidcApi *ssooidc.Client, ssoApi *sso.Client) {
-	if err := internal.SyncProfiles(config, oidcApi, ssoApi); err != nil {
+// syncProfiles syncs the profiles of the config with AWS SSO. Failing to sync is only an error when it leaves
+// the config without profiles, as there is nothing to select or refresh then
+func syncProfiles(cmd *cobra.Command, config *internal.Config, oidcApi *ssooidc.Client, ssoApi *sso.Client) error {
+	err := internal.SyncProfiles(config, oidcApi, ssoApi)
+	if len(config.Profiles) == 0 {
+		cmd.SilenceUsage = true
+		return noProfilesError(config, err)
+	}
+
+	if err != nil {
 		log.Printf("Could not sync profiles of %s config with AWS SSO, continuing with the existing profiles: %v", config.Name, err)
 	}
+	return nil
+}
+
+// noProfilesError explains why the config has no profiles after syncing with AWS SSO, and how to add one
+func noProfilesError(config *internal.Config, syncErr error) error {
+	var message strings.Builder
+	fmt.Fprintf(&message, "there are no profiles in %q config\n", config.Name)
+
+	if syncErr != nil {
+		fmt.Fprintf(&message, "\nProfiles could not be synced from your AWS SSO accounts: %v\n", syncErr)
+	} else {
+		message.WriteString("\nSyncing with AWS SSO added no profiles, as every account you can access is in the config's ignored_accounts.\n")
+	}
+
+	fmt.Fprintf(&message, "\nTo add a profile, run the following and answer Yes when asked to configure profiles:\n  awsx config %s\n", config.Name)
+
+	if len(config.IgnoredAccounts) > 0 {
+		fmt.Fprintf(&message, "\nTo have syncing add an account back, remove its id from ignored_accounts of %q config in ~/.config/awsx/config:\n", config.Name)
+		for _, accountId := range config.IgnoredAccounts {
+			fmt.Fprintf(&message, "  %s\n", accountId)
+		}
+	}
+
+	return errors.New(strings.TrimRight(message.String(), "\n"))
 }
 
 func actionWithSpecifiedProfiles(config *internal.Config, profileNames []string, oidcApi *ssooidc.Client, ssoApi *sso.Client, action func(*internal.Config, *internal.Profile, *ssooidc.Client, *sso.Client) error) error {

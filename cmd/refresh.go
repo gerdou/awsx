@@ -18,7 +18,9 @@ var refreshCmd = &cobra.Command{
 		}
 
 		oidcApi, ssoApi := internal.InitClients(configs[configName])
-		syncProfiles(configs[configName], oidcApi, ssoApi)
+		if err = syncProfiles(cmd, configs[configName], oidcApi, ssoApi); err != nil {
+			return err
+		}
 
 		if len(profileNames) >= 1 {
 			if profileNames[0] == "all" {

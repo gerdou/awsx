@@ -67,70 +67,13 @@ func configArgs(configNames []string) error {
 			continue
 		}
 
-		profileNames := utilities.Keys(config.Profiles)
-		sort.SliceStable(profileNames, func(i, j int) bool {
-			return profileNames[i] < profileNames[j]
-		})
-
-		var profileName string
-		var region string
-		profilesConfigured := 0
-		for {
-			defaultProfileName := "default"
-			if len(profileNames) > 0 {
-				defaultProfileName = profileNames[0]
-			}
-			profileName, err = prompter.Prompt("Profile name to configure", defaultProfileName)
-			if err != nil {
-				log.Printf("Failed to prompt for %s config argument: %s\n", configName, err)
-				break
-			}
-			if profileName == "" {
-				log.Println("Profile name cannot be empty")
-				break
-			}
-
-			if profileName == defaultProfileName && len(profileNames) > 1 {
-				profileNames = profileNames[1:]
-			}
-
-			defaultRegion, found := config.Profiles[profileName]
-			if !found {
-				defaultRegion = &internal.Profile{
-					Region: "",
-				}
-			}
-
-			region, err = prompter.Prompt("Default Profile Region", defaultRegion.Region)
-			if err != nil {
-				log.Printf("Failed to prompt for region for %s: %s\n", configName, err)
-				break
-			}
-			if region == "" {
-				log.Println("Region name cannot be empty")
-				break
-			}
-
-			config.Profiles[profileName] = &internal.Profile{
-				Region:         region,
-				DefaultAccount: nil,
-			}
-
-			index, _, _ := prompter.Select("Do you wish to configure a default account for this profile?", []string{"Yes", "No"}, nil)
-			if index == 0 {
-				config.Profiles[profileName].DefaultAccount = configDefaultAccountForProfile(profileName, prompter)
-			}
-
-			profilesConfigured++
-
-			index, _, _ = prompter.Select("Do you wish to add another profile to this config?", []string{"Yes", "No"}, nil)
-			if index != 0 {
-				break
-			}
-		}
-
-		if profilesConfigured == 0 {
+		index, _, err := prompter.Select("Do you wish to configure profiles now? Profiles are synced from your AWS SSO accounts when you first use this config", []string{"No", "Yes"}, nil)
+		if err != nil {
+			log.Printf("Failed to prompt for profiles of %s: %s\n", configName, err)
 			continue
+		}
+		if index == 1 {
+			configProfiles(configName, config, prompter)
 		}
 
 		config.Complete = true
@@ -138,6 +81,69 @@ func configArgs(configNames []string) error {
 	}
 
 	return internal.WriteInternalConfig(configs)
+}
+
+// configProfiles prompts for profiles of the config until the user stops adding them
+func configProfiles(configName string, config *internal.Config, prompter internal.Prompter) {
+	profileNames := utilities.Keys(config.Profiles)
+	sort.SliceStable(profileNames, func(i, j int) bool {
+		return profileNames[i] < profileNames[j]
+	})
+
+	var profileName string
+	var region string
+	var err error
+	for {
+		defaultProfileName := "default"
+		if len(profileNames) > 0 {
+			defaultProfileName = profileNames[0]
+		}
+		profileName, err = prompter.Prompt("Profile name to configure", defaultProfileName)
+		if err != nil {
+			log.Printf("Failed to prompt for %s config argument: %s\n", configName, err)
+			break
+		}
+		if profileName == "" {
+			log.Println("Profile name cannot be empty")
+			break
+		}
+
+		if profileName == defaultProfileName && len(profileNames) > 1 {
+			profileNames = profileNames[1:]
+		}
+
+		defaultRegion, found := config.Profiles[profileName]
+		if !found {
+			defaultRegion = &internal.Profile{
+				Region: "",
+			}
+		}
+
+		region, err = prompter.Prompt("Default Profile Region", defaultRegion.Region)
+		if err != nil {
+			log.Printf("Failed to prompt for region for %s: %s\n", configName, err)
+			break
+		}
+		if region == "" {
+			log.Println("Region name cannot be empty")
+			break
+		}
+
+		config.Profiles[profileName] = &internal.Profile{
+			Region:         region,
+			DefaultAccount: nil,
+		}
+
+		index, _, _ := prompter.Select("Do you wish to configure a default account for this profile?", []string{"Yes", "No"}, nil)
+		if index == 0 {
+			config.Profiles[profileName].DefaultAccount = configDefaultAccountForProfile(profileName, prompter)
+		}
+
+		index, _, _ = prompter.Select("Do you wish to add another profile to this config?", []string{"Yes", "No"}, nil)
+		if index != 0 {
+			break
+		}
+	}
 }
 
 func configDefaultAccountForProfile(profile string, prompter internal.Prompter) *internal.UsageInformation {

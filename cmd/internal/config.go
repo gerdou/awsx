@@ -273,6 +273,10 @@ func ReadInternalConfig() (map[string]*Config, error) {
 	for configName, config := range configFile.Configs {
 		config.Complete = true
 		config.Name = configName
+		// A hand-edited config may have no profiles key, and syncing adds profiles to the map
+		if config.Profiles == nil {
+			config.Profiles = make(map[string]*Profile)
+		}
 		for name, profile := range config.Profiles {
 			profile.Name = name
 		}
@@ -397,15 +401,6 @@ func RemoveProfilesFromConfig(configName string, profileNames []string) error {
 	}
 	slices.Sort(config.IgnoredAccounts)
 
-	if len(config.Profiles) == 0 {
-		delete(configs, configName)
-	} else {
-		configs[configName] = config
-	}
-
-	if len(configs) == 0 {
-		return os.RemoveAll(defaultInternalPath)
-	}
-
+	// A config without profiles is kept, as syncing or awsx config can add profiles to it again
 	return WriteInternalConfig(configs)
 }

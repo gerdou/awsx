@@ -35,9 +35,16 @@ This is the only way to add a configuration. `awsx`, `awsx select` and `awsx ref
 - You will be prompted for:
     - **Start URL ID**: The identifier for your AWS SSO Start URL (e.g., if your URL is `https://d-1234567890.awsapps.com/start`, the ID is `d-1234567890`).
     - **SSO Region**: The region where your SSO is configured.
-    - **Profile name**: The name of the local AWS profile to update.
-    - **Default Region**: The default region for that profile.
-    - **Default Account/Role**: (Optional) You can preset a default account and role for the profile.
+    - **Profiles**: Whether to configure profiles now. The default is No: the first time you use the configuration, a profile is added for every account you can access (see [Syncing Profiles with AWS SSO](#4-syncing-profiles-with-aws-sso)). If you answer Yes, you are prompted for each profile:
+        - **Profile name**: The name of the local AWS profile to update.
+        - **Default Region**: The default region for that profile.
+        - **Default Account/Role**: (Optional) You can preset a default account and role for the profile.
+
+Configure a profile yourself when the synced ones don't fit, for example:
+
+- a profile named `default`, so AWS tools use it without `--profile`;
+- a profile without a default account, to pick any account and role each time you run `awsx select`;
+- a profile for an account in a region other than the configuration's SSO region.
 
 ### 2. Selecting an Account and Role
 
@@ -73,7 +80,7 @@ Every time you run `awsx select` or `awsx refresh`, the profiles of the configur
 
 Each change is logged. Profiles are matched to accounts by account ID, so you can have several profiles for the same account, for example one per region, and they are all kept or removed together. Profiles without a default account are never changed.
 
-If AWS SSO cannot be reached, or returns no accounts, nothing is changed: `awsx` logs a warning and continues with your existing profiles.
+If AWS SSO cannot be reached, or returns no accounts, nothing is changed: `awsx` logs a warning and continues with your existing profiles. If the configuration has no profiles to continue with, `awsx` stops and explains why, either because syncing failed or because every account you can access is in `ignored_accounts`. Add a profile with `awsx config [config-name]`, or remove account IDs from `ignored_accounts`.
 
 To stop an account from being added back, remove its profiles with `awsx config remove --profile`. When the last profile of an account is removed, its account ID is added to the configuration's `ignored_accounts` list, and syncing skips it. Delete the ID from that list to have the account added again.
 
@@ -91,7 +98,7 @@ To stop an account from being added back, remove its profiles with `awsx config 
   ```bash
   awsx config remove [config-name] [--profile profile1,profile2]
   ```
-  Removes an entire configuration or specific profiles from it. Accounts left with no profiles are added to `ignored_accounts`, so syncing does not add them back (see [Syncing Profiles with AWS SSO](#4-syncing-profiles-with-aws-sso)).
+  Removes an entire configuration or specific profiles from it. Accounts left with no profiles are added to `ignored_accounts`, so syncing does not add them back (see [Syncing Profiles with AWS SSO](#4-syncing-profiles-with-aws-sso)). Removing the last profile of a configuration keeps the configuration, with its Start URL, SSO region and `ignored_accounts`. To remove the configuration itself, leave out `--profile`.
 
 - **Export/Import**:
   ```bash
